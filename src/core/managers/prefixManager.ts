@@ -1,4 +1,4 @@
-import { query } from "../database/db.js";
+import { getCollections } from "../database/db.js";
 
 const prefixCache = new Map<string, string | null>();
 
@@ -7,33 +7,25 @@ export async function getPrefix(guildId: string): Promise<string | null> {
     return prefixCache.get(guildId) ?? null;
   }
 
-  const rows: any = await query(
-    "SELECT prefix FROM guild_prefixes WHERE guild_id = ? LIMIT 1",
-    [guildId]
-  );
+  const doc = await getCollections().guildPrefixes.findOne({ _id: guildId });
 
-  if (!rows || rows.length === 0) {
+  if (!doc) {
     prefixCache.set(guildId, null);
     return null;
   }
 
-  const prefix = rows[0].prefix as string;
-  prefixCache.set(guildId, prefix);
-
-  return prefix;
+  prefixCache.set(guildId, doc.prefix);
+  return doc.prefix;
 }
 
 export async function setPrefix(
   guildId: string,
   prefix: string
 ): Promise<void> {
-  await query(
-    `
-    INSERT INTO guild_prefixes (guild_id, prefix)
-    VALUES (?, ?)
-    ON DUPLICATE KEY UPDATE prefix = VALUES(prefix)
-    `,
-    [guildId, prefix]
+  await getCollections().guildPrefixes.updateOne(
+    { _id: guildId },
+    { $set: { prefix } },
+    { upsert: true }
   );
 
   prefixCache.set(guildId, prefix);

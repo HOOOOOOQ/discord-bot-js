@@ -1,4 +1,4 @@
-import { query } from "../database/db.js";
+import { getCollections } from "../database/db.js";
 
 const termsCache = new Map<string, boolean>();
 
@@ -7,33 +7,25 @@ export async function hasAcceptedBotTerms(userId: string): Promise<boolean> {
     return termsCache.get(userId)!;
   }
 
-  const rows: any = await query(
-    "SELECT user_id FROM accepted_bot_terms WHERE user_id = ? LIMIT 1",
-    [userId]
-  );
-
-  const accepted = !!rows && rows.length > 0;
+  const doc = await getCollections().acceptedTerms.findOne({ _id: userId });
+  const accepted = !!doc;
 
   termsCache.set(userId, accepted);
-
   return accepted;
 }
 
 export async function acceptBotTerms(userId: string): Promise<void> {
-  await query(
-    `
-    INSERT INTO accepted_bot_terms (user_id)
-    VALUES (?)
-    ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)
-    `,
-    [userId]
+  await getCollections().acceptedTerms.updateOne(
+    { _id: userId },
+    { $set: { accepted_at: new Date() } },
+    { upsert: true }
   );
 
   termsCache.set(userId, true);
 }
 
 export async function revokeBotTerms(userId: string): Promise<void> {
-  await query("DELETE FROM accepted_bot_terms WHERE user_id = ?", [userId]);
+  await getCollections().acceptedTerms.deleteOne({ _id: userId });
   termsCache.set(userId, false);
 }
 

@@ -13,20 +13,22 @@ function snowflake(name: string, value: string): string {
   return value;
 }
 
-function port(name: string, fallback: number): number {
-  const value = Number(process.env[name] || fallback);
-  if (!Number.isInteger(value) || value < 1 || value > 65535) {
-    throw new Error(`Invalid port in environment variable: ${name}`);
-  }
-  return value;
-}
-
 function boolean(name: string, fallback: boolean): boolean {
   const value = process.env[name];
   if (!value) return fallback;
   if (value === "true") return true;
   if (value === "false") return false;
   throw new Error(`${name} must be either true or false`);
+}
+
+function mongoUri(name: string): string {
+  const value = required(name);
+  if (!/^mongodb(\+srv)?:\/\//.test(value)) {
+    throw new Error(
+      `${name} must start with mongodb:// or mongodb+srv://`
+    );
+  }
+  return value;
 }
 
 const defaultPrefix = process.env.PREFIX_DEFAULT || "!";
@@ -53,9 +55,5 @@ export const env = {
   PREFIX_DEFAULT: defaultPrefix,
 
   DATABASE_ENABLED: databaseEnabled,
-  DB_HOST: databaseEnabled ? required("DB_HOST") : "127.0.0.1",
-  DB_PORT: port("DB_PORT", 3306),
-  DB_USER: databaseEnabled ? required("DB_USER") : "",
-  DB_PASSWORD: databaseEnabled ? required("DB_PASSWORD") : "",
-  DB_NAME: databaseEnabled ? required("DB_NAME") : "",
+  MONGODB_URI: databaseEnabled ? mongoUri("MONGODB_URI") : "",
 };
