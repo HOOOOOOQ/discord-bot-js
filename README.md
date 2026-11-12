@@ -5,7 +5,7 @@
 
 ![Node.js](https://img.shields.io/badge/node-22+-green)
 ![Discord.js](https://img.shields.io/badge/discord.js-v14-blue)
-![Database](https://img.shields.io/badge/database-MariaDB-orange)
+![Database](https://img.shields.io/badge/database-MongoDB-green)
 ![Docker](https://img.shields.io/badge/docker-supported-blue)
 
 A modular **Discord bot template** built with:
@@ -13,15 +13,15 @@ A modular **Discord bot template** built with:
 - Node.js
 - TypeScript
 - discord.js
-- MariaDB
+- MongoDB (connection URL / Atlas)
 - Docker / Portainer support
 
 This template is designed to be reused for **multiple bots**.
 
-> **MariaDB and Docker are optional.** The bot can run directly from Windows
+> **MongoDB and Docker are optional.** The bot can run directly from Windows
 > Command Prompt with Node.js. Set `DATABASE_ENABLED=false` and only a Discord
-> token plus client ID are required. Use Docker Compose when you want the full
-> setup with MariaDB.
+> token plus client ID are required. To persist prefixes, bans, permissions,
+> and terms, set `DATABASE_ENABLED=true` and provide `MONGODB_URI`.
 
 ---
 
@@ -29,8 +29,8 @@ This template is designed to be reused for **multiple bots**.
 
 - Slash commands
 - Prefix commands
-- Optional MariaDB database
-- Automatic database initialization when enabled
+- Optional MongoDB database (Atlas or any MongoDB URL)
+- Automatic MongoDB connection when enabled
 - Per-guild prefix system
 - Cooldown system
 - Bot owner system
@@ -102,6 +102,15 @@ CLIENT_ID=your_application_id
 DATABASE_ENABLED=false
 ```
 
+If you already have a MongoDB URL (Atlas or local), enable persistence:
+
+```env
+DISCORD_TOKEN=your_bot_token
+CLIENT_ID=your_application_id
+DATABASE_ENABLED=true
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/discordbot
+```
+
 Then run:
 
 ```
@@ -121,11 +130,11 @@ The bot can run in three ways:
 - Docker
 - Portainer
 
-| Setup | Docker required | MariaDB required | Persistent features |
+| Setup | Docker required | MongoDB required | Persistent features |
 |---|---:|---:|---|
 | Basic local bot | No | No | No |
-| Local bot with MariaDB | No | Yes | Yes |
-| Docker Compose | Yes | Included | Yes |
+| Local bot with MongoDB URL | No | Yes | Yes |
+| Docker Compose | Yes | Your MongoDB URL | Yes |
 
 ---
 
@@ -161,15 +170,21 @@ BOT_OWNER_IDS=
 PREFIX_DEFAULT=!
 
 DATABASE_ENABLED=false
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=
-DB_PASSWORD=
-DB_NAME=
+MONGODB_URI=
 ```
 
-With `DATABASE_ENABLED=false`, the DB values may stay empty. The bot will run
+With `DATABASE_ENABLED=false`, `MONGODB_URI` may stay empty. The bot will run
 with its default prefix and commands that do not require persistent storage.
+
+To enable persistent features, set:
+
+```
+DATABASE_ENABLED=true
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/discordbot
+```
+
+Include the database name in the URL path (`/discordbot` above). A local
+MongoDB URL such as `mongodb://127.0.0.1:27017/discordbot` also works.
 
 Start the bot:
 
@@ -217,11 +232,8 @@ BOT_OWNER_IDS=
 
 PREFIX_DEFAULT=!
 
-DB_USER=
-DB_PASSWORD=
-DB_NAME=
-
-MARIADB_ROOT_PASSWORD=
+DATABASE_ENABLED=true
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/discordbot
 ```
 
 Start containers:
@@ -230,45 +242,42 @@ Start containers:
 docker compose up -d --build
 ```
 
-This will start:
-
-- the bot
-- the MariaDB database
-
-Docker Compose enables the database automatically for the bot container, so
-you do not need to set `DATABASE_ENABLED`, `DB_HOST`, or `DB_PORT` in `.env`.
+This starts the bot and connects it to MongoDB using `MONGODB_URI`. Compose
+defaults `DATABASE_ENABLED` to `true` for the bot container.
 
 ---
 
 # Optional Database Features
 
-MariaDB is not required for the basic bot. With `DATABASE_ENABLED=false`:
+MongoDB is not required for the basic bot. With `DATABASE_ENABLED=false`:
 
 - slash and prefix commands such as `ping` work
 - the prefix comes from `PREFIX_DEFAULT`
 - `/terms view` works
-- no MariaDB server is needed
+- no MongoDB server or Atlas cluster is needed
 
 Database-dependent commands remain registered so the template API stays
 consistent, but they reply that the database must be enabled instead of
 crashing the bot.
 
-The following persistent features require `DATABASE_ENABLED=true`:
+The following persistent features require `DATABASE_ENABLED=true` and a
+valid `MONGODB_URI`:
 
 - per-server custom prefixes and `/setprefix`
 - bot user and guild bans
 - custom bot permission levels
 - recording terms acceptance with `/terms accept`
 
-To enable them locally, install MariaDB, fill in the `DB_*` values, and set:
+To enable them, set:
 
 ```env
 DATABASE_ENABLED=true
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/discordbot
 ```
 
-The bot creates its required tables automatically when it starts. Switching
-back to `DATABASE_ENABLED=false` disables database access without deleting
-existing MariaDB data.
+The bot connects to MongoDB when it starts and creates collections on first
+write. Switching back to `DATABASE_ENABLED=false` disables database access
+without deleting existing MongoDB data.
 
 ---
 
@@ -313,21 +322,19 @@ DISCORD_TOKEN
 CLIENT_ID
 DEV_GUILD_ID
 BOT_OWNER_IDS
-DB_USER
-DB_PASSWORD
-DB_NAME
-MARIADB_ROOT_PASSWORD
+DATABASE_ENABLED
+MONGODB_URI
 ```
 
-Use different strong values for `DB_PASSWORD` and
-`MARIADB_ROOT_PASSWORD`. Keep the Discord token and passwords out of the
-Compose file and Git repository.
+Keep the Discord token and the MongoDB URL out of the Compose file and Git
+repository. If the MongoDB password contains special characters, URL-encode
+them in `MONGODB_URI`.
 
-Select **Deploy the stack**. MariaDB should become `healthy`, followed by the
-bot becoming `running`. The bot logs should contain:
+Select **Deploy the stack**. The bot should become `running`. The bot logs
+should contain:
 
 ```text
-Database tables initialized.
+MongoDB connected.
 Logged in as YourBotName
 ```
 
@@ -353,7 +360,7 @@ docker build -t discord-bot-js:local .
 ```
 
 Then recreate the bot container from Portainer without pulling the image from
-a registry. The MariaDB data remains in the `mariadb_data` named volume.
+a registry. Persistent data stays in your MongoDB cluster or server.
 
 Portainer Business Edition users can instead select **Git repository** while
 creating the stack and point it at the repository containing
@@ -496,8 +503,7 @@ export default event;
 
 # Using the Database
 
-Database connection and table initialization are handled automatically when
-`DATABASE_ENABLED=true`.
+MongoDB connection is handled automatically when `DATABASE_ENABLED=true`.
 
 Access it via:
 
@@ -505,20 +511,29 @@ Access it via:
 src/core/database/db.ts
 ```
 
-Example query from a command inside `src/commands/slash/general/`:
+Example from a command inside `src/commands/slash/general/`:
 
 ```ts
-import { query } from "../../../core/database/db.js";
+import { getCollections } from "../../../core/database/db.js";
 
-await query(
-  "INSERT INTO example_table (user_id) VALUES (?)",
-  [userId]
+await getCollections().guildPrefixes.updateOne(
+  { _id: guildId },
+  { $set: { prefix } },
+  { upsert: true }
 );
 ```
 
 Relative import paths change depending on the location of your file. Calling
-`query()` while `DATABASE_ENABLED=false` throws an error, so database-backed
-commands should check the setting or use the existing managers and guards.
+`getCollections()` while the database is disconnected throws an error, so
+database-backed commands should check `DATABASE_ENABLED` or use the existing
+managers and guards.
+
+Include the database name in `MONGODB_URI`:
+
+```
+mongodb+srv://user:password@cluster.mongodb.net/discordbot
+mongodb://127.0.0.1:27017/discordbot
+```
 
 ---
 
@@ -541,7 +556,7 @@ botPermissions: 5
 
 User must have permission level **5 or higher**.
 
-Custom permission levels require MariaDB. They do not make someone a bot
+Custom permission levels require MongoDB. They do not make someone a bot
 owner. Bot owners are configured separately with `BOT_OWNER_IDS` in `.env`.
 
 ---
@@ -680,28 +695,27 @@ CLIENT_ID
 
 ## Database errors
 
-First verify that `DATABASE_ENABLED=true`. Then make sure MariaDB is running
-and check:
+First verify that `DATABASE_ENABLED=true`. Then check `MONGODB_URI`:
 
 ```
-DB_USER
-DB_PASSWORD
-DB_NAME
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/discordbot
 ```
 
-For Docker Compose, also check `MARIADB_ROOT_PASSWORD`. If you do not need
-persistent features, set `DATABASE_ENABLED=false` when running locally.
+The URL must start with `mongodb://` or `mongodb+srv://` and should include
+the database name. If the password has special characters (`@`, `#`, `/`,
+etc.), URL-encode them. If you do not need persistent features, set
+`DATABASE_ENABLED=false` when running locally.
 
 ---
 
 # FAQ
 
-## Are MariaDB and Docker required?
+## Are MongoDB and Docker required?
 
 No. For a basic local bot, set `DATABASE_ENABLED=false` and run it directly
-with Node.js. MariaDB is required only for persistent prefixes, bans, custom
-permission levels, and terms acceptance. Docker is an optional deployment
-method.
+with Node.js. MongoDB is required only for persistent prefixes, bans, custom
+permission levels, and terms acceptance. Provide that as `MONGODB_URI`
+(Atlas or a local MongoDB server). Docker is an optional deployment method.
 
 ## Can I run the bot from Windows Command Prompt?
 
@@ -730,7 +744,7 @@ channel permissions.
 
 Discord requires a subcommand because the template defines them. Use
 `/terms view` to read the terms or `/terms accept` to record acceptance.
-Acceptance requires MariaDB.
+Acceptance requires MongoDB.
 
 ## Why does Portainer report that it cannot find the Dockerfile?
 
@@ -741,15 +755,15 @@ deploy the stack from its Git repository option.
 
 ## Does the bot support Raspberry Pi?
 
-The Dockerfile uses ARM-compatible official Node.js and MariaDB images. A
-64-bit Raspberry Pi OS installation is recommended. Building the image on the
-Pi automatically selects its architecture.
+The Dockerfile uses ARM-compatible official Node.js images. A 64-bit
+Raspberry Pi OS installation is recommended. Building the image on the Pi
+automatically selects its architecture. MongoDB data lives in the cluster or
+server pointed to by `MONGODB_URI`, not in the bot container.
 
-## Will recreating the MariaDB container delete the data?
+## Will recreating the bot container delete the data?
 
-Not normally. Compose stores the database in the `mariadb_data` named volume.
-Deleting that volume, for example with `docker compose down -v`, deletes the
-database permanently.
+No. Persistent data is stored in MongoDB through `MONGODB_URI`. Recreating
+the bot container does not delete Atlas or MongoDB server data.
 
 ## What should I do if a Discord token is committed to GitHub?
 

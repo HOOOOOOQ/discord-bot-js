@@ -38,7 +38,7 @@ What actually happened.
 
 - Node.js version:
 - OS:
-- Database (MariaDB version):
+- Database (MongoDB / Atlas):
 
 ---
 

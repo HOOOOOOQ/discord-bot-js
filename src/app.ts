@@ -4,6 +4,7 @@ import { dirname, extname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { BotClient } from "./core/client/BotClient.js";
 import { env } from "./core/config/env.js";
+import { closeDatabase } from "./core/database/db.js";
 import { initDatabase } from "./core/database/init.js";
 import { registerEvent } from "./core/loaders/loadEvents.js";
 import { Event } from "./core/types/Event.js";
@@ -72,6 +73,21 @@ async function start(): Promise<void> {
   await client.login(env.DISCORD_TOKEN);
 }
 
+async function shutdown(signal: string): Promise<void> {
+  console.log(`Received ${signal}, shutting down...`);
+  client.destroy();
+  await closeDatabase();
+  process.exit(0);
+}
+
+process.once("SIGINT", () => {
+  void shutdown("SIGINT");
+});
+process.once("SIGTERM", () => {
+  void shutdown("SIGTERM");
+});
+
 start().catch((error) => {
   console.error("Bot failed to start:", error);
+  void closeDatabase().finally(() => process.exit(1));
 });
