@@ -680,6 +680,27 @@ If using `DEV_GUILD_ID`, commands appear instantly in that server.
 When `DEV_GUILD_ID` is set, deployment targets only that server. Remove it to
 deploy commands globally. Global commands may take up to **1 hour** to appear.
 
+## `Missing Access` (50001) when deploying commands
+
+The bot can log in even when slash command deploy fails. Discord is refusing
+to register commands in `DEV_GUILD_ID`.
+
+Check all of these:
+
+1. `CLIENT_ID` is the **Application ID** of the same bot as `DISCORD_TOKEN`
+2. The bot is already in that server
+3. The invite used the `applications.commands` scope
+
+Re-invite with:
+
+```
+https://discord.com/oauth2/authorize?client_id=CLIENT_ID&scope=bot%20applications.commands&permissions=68608
+```
+
+If the bot is already in the server, kick it first, then open that URL. Enable
+Developer Mode, right-click the server icon, and copy the server ID into
+`DEV_GUILD_ID`.
+
 ---
 
 ## Bot not starting
@@ -732,7 +753,8 @@ dependency.
 
 Run `npm run deploy`. When `DEV_GUILD_ID` is set, commands are deployed only
 to that server. Without it, commands are deployed globally and may take time
-to appear.
+to appear. A `Missing Access` error means the bot must be re-invited with
+the `bot` and `applications.commands` scopes.
 
 ## Why do prefix commands not work?
 
